@@ -63,52 +63,45 @@ func GcloudIdToken() (string, error) {
 func main() {
 	var err error
 	var scopes scopesType
-	flag.Var(&scopes, "scopes", "")
+	flag.Var(&scopes, "scopes", "Scopes")
 	var printToken = flag.Bool("print-token", false, "Print token")
 	var accessToken = flag.Bool("access-token", false, "Use access token")
 	var audience = flag.String("audience", "", "Audience")
 	var idToken = flag.Bool("id-token", false, "Use ID token")
-	var gcloudIdToken = flag.Bool("gcloud-id-token", false, "Use gcloud ID token")
 	var serviceAccount = flag.String("service-account", "", "Service Account")
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
 	flag.Parse()
 
 	ctx := context.Background()
 
+	var tokenString string
+	switch {
+	case *idToken && *accessToken:
+		log.Fatalln("--id-token and --access-token are exclusive")
+	case !*idToken && !*accessToken:
+		log.Fatalln("--id-token or --access-token are required")
+	case *idToken && len(scopes) != 0:
+		log.Fatalln("--id-token and --scopes are exclusive")
+	case *accessToken && *audience != "":
+		log.Fatalln("--access-token and --audience are exclusive")
+	}
+
+	switch {
+	case *idToken && *serviceAccount == "":
+		log.Println("--service-account is missing. Use experimental gcloud ID token.")
+		tokenString, err = GcloudIdToken()
+	case *idToken && *serviceAccount != "":
+		tokenString, err = ImpersonateIdToken(ctx, *serviceAccount, audience)
+	case *accessToken && *serviceAccount == "":
+		tokenString, err = DefaultAccessToken(ctx)
+	case *accessToken && *serviceAccount != "":
+		tokenString, err = ImpersonateAccessToken(ctx, *serviceAccount, scopes)
+	default:
+		log.Fatalln("unknown branch")
+	}
+
 	if len(scopes) == 0 {
 		scopes = []string{"https://www.googleapis.com/auth/cloud-platform"}
-	}
-
-	var tokenString string
-	if *gcloudIdToken {
-		tokenString, err = GcloudIdToken()
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}
-
-	if *idToken {
-		if *serviceAccount == "" {
-			log.Fatalln("--service-account is required if --id-token")
-		}
-		tokenString, err = ImpersonateIdToken(ctx, *serviceAccount, audience)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}
-
-	if *accessToken {
-		if *serviceAccount == "" {
-			tokenString, err = DefaultAccessToken(ctx)
-			if err != nil {
-				log.Fatalln(err)
-			}
-		} else {
-			tokenString, err = ImpersonateAccessToken(ctx, *serviceAccount, scopes)
-			if err != nil {
-				log.Fatalln(err)
-			}
-		}
 	}
 
 	if *printToken {
