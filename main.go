@@ -100,6 +100,10 @@ func main() {
 		log.Fatalln("unknown branch")
 	}
 
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	if len(scopes) == 0 {
 		scopes = []string{"https://www.googleapis.com/auth/cloud-platform"}
 	}
@@ -138,7 +142,7 @@ func main() {
 func DefaultAccessToken(ctx context.Context) (string, error) {
 	tokenSource, err := google.DefaultTokenSource(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		return "", err
 	}
 	token, err := tokenSource.Token()
 	if err != nil {
@@ -154,7 +158,7 @@ func toName(serviceAccount string) string {
 func ImpersonateIdToken(ctx context.Context, serviceAccount string, audience *string) (string, error) {
 	service, err := iamcredentials.NewService(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		return "", err
 	}
 	projectsService := iamcredentials.NewProjectsService(service)
 
@@ -172,7 +176,7 @@ func ImpersonateIdToken(ctx context.Context, serviceAccount string, audience *st
 func ImpersonateAccessToken(ctx context.Context, serviceAccount string, scopes []string) (string, error) {
 	service, err := iamcredentials.NewService(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		return "", err
 	}
 	projectsService := iamcredentials.NewProjectsService(service)
 
