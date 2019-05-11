@@ -18,6 +18,17 @@ import (
 	"google.golang.org/api/iamcredentials/v1"
 )
 
+type stringSlice []string
+
+func (ss *stringSlice) String() string {
+	return fmt.Sprintf("%v", *ss)
+}
+
+func (ss *stringSlice) Set(v string) error {
+	*ss = append(*ss, strings.Split(v, ",")...)
+	return nil
+}
+
 func GcloudIdToken() (string, error) {
 	var err error
 	// reflesh token
@@ -45,6 +56,8 @@ func GcloudIdToken() (string, error) {
 
 func main() {
 	var err error
+	var scopes stringSlice
+	flag.Var(&scopes, "scopes", "")
 	var printToken = flag.Bool("print-token", false, "Print token")
 	var accessToken = flag.Bool("access-token", false, "Use access token")
 	var audience = flag.String("audience", "", "Audience")
@@ -55,6 +68,10 @@ func main() {
 	flag.Parse()
 
 	ctx := context.Background()
+
+	if len(scopes) == 0 {
+		scopes = []string{"https://www.googleapis.com/auth/cloud-platform"}
+	}
 
 	var tokenString string
 	if *gcloudIdToken {
@@ -81,17 +98,18 @@ func main() {
 				log.Fatalln(err)
 			}
 		} else {
-			tokenString, err = ImpersonateAccessToken(ctx, *serviceAccount)
+			tokenString, err = ImpersonateAccessToken(ctx, *serviceAccount, scopes)
 			if err != nil {
 				log.Fatalln(err)
 			}
 		}
 	}
-	// projectsServiceAccountsService := iamcredentials.NewProjectsServiceAccountsService(service)
+
 	if *printToken {
 		fmt.Println(tokenString)
 		return
 	}
+
 	if *tokenInfo {
 		var resp *http.Response
 		if *accessToken {
@@ -105,6 +123,7 @@ func main() {
 		io.Copy(os.Stdout, resp.Body)
 		return
 	}
+
 	var args []string
 	args = append(args, "-H", fmt.Sprintf("Authorization: Bearer %s", tokenString))
 	args = append(args, flag.Args()...)
@@ -151,7 +170,7 @@ func ImpersonateIdToken(ctx context.Context, serviceAccount string, audience *st
 	return response.Token, nil
 }
 
-func ImpersonateAccessToken(ctx context.Context, serviceAccount string) (string, error) {
+func ImpersonateAccessToken(ctx context.Context, serviceAccount string, scopes []string) (string, error) {
 	service, err := iamcredentials.NewService(ctx)
 	if err != nil {
 		log.Fatalln(err)
@@ -160,7 +179,7 @@ func ImpersonateAccessToken(ctx context.Context, serviceAccount string) (string,
 
 	response, err := projectsService.ServiceAccounts.GenerateAccessToken(toName(serviceAccount),
 		&iamcredentials.GenerateAccessTokenRequest{
-			Scope: []string{"https://www.googleapis.com/auth/cloud-platform"},
+			Scope: scopes,
 		}).Do()
 	if err != nil {
 		return "", err
