@@ -18,14 +18,20 @@ import (
 	"google.golang.org/api/iamcredentials/v1"
 )
 
-type stringSlice []string
+type scopesType []string
 
-func (ss *stringSlice) String() string {
+func (ss *scopesType) String() string {
 	return fmt.Sprintf("%v", *ss)
 }
 
-func (ss *stringSlice) Set(v string) error {
-	*ss = append(*ss, strings.Split(v, ",")...)
+func (ss *scopesType) Set(v string) error {
+	for _, scope := range strings.Split(v, ",") {
+		const authPrefix = "https://www.googleapis.com/auth/"
+		if !strings.HasPrefix(scope, authPrefix) {
+			scope = authPrefix + scope
+		}
+		*ss = append(*ss, scope)
+	}
 	return nil
 }
 
@@ -56,7 +62,7 @@ func GcloudIdToken() (string, error) {
 
 func main() {
 	var err error
-	var scopes stringSlice
+	var scopes scopesType
 	flag.Var(&scopes, "scopes", "")
 	var printToken = flag.Bool("print-token", false, "Print token")
 	var accessToken = flag.Bool("access-token", false, "Use access token")
