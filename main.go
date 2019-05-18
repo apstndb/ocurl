@@ -36,7 +36,7 @@ func (ss *scopesType) Set(v string) error {
 func GcloudIdToken() (string, error) {
 	var buf bytes.Buffer
 
-	cmd := exec.Command("gcloud", "config", "config-helper", "--format=(credential.id_token)",  "--force-auth-refresh")
+	cmd := exec.Command("gcloud", "config", "config-helper", "--format=value(credential.id_token)",  "--force-auth-refresh")
 	cmd.Stdout = &buf
 	err := cmd.Run()
 	if err != nil {
