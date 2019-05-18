@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 	"os/exec"
 	"strings"
 
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iamcredentials/v1"
 )
@@ -36,28 +34,16 @@ func (ss *scopesType) Set(v string) error {
 }
 
 func GcloudIdToken() (string, error) {
-	var err error
-	// reflesh token
-	err = exec.Command("gcloud", "auth", "print-access-token").Run()
-	if err != nil {
-		return "", err
-	}
-	cmd := exec.Command("gcloud", "config", "get-value", "core/account")
 	var buf bytes.Buffer
+
+	cmd := exec.Command("gcloud", "config", "config-helper", "--format=(credential.id_token)",  "--force-auth-refresh")
 	cmd.Stdout = &buf
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return "", err
 	}
-	email := strings.TrimSpace(buf.String())
-	db, err := sql.Open("sqlite3", os.Getenv("HOME")+"/.config/gcloud/access_tokens.db")
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
-	var tokenString string
-	err = db.QueryRow(`SELECT id_token FROM access_tokens WHERE account_id = ?`, email).Scan(&tokenString)
-	return tokenString, err
+
+	return strings.TrimSpace(buf.String()), nil
 }
 
 func main() {
