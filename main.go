@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jws"
 	"google.golang.org/api/iamcredentials/v1"
 	"google.golang.org/api/option"
 	"io"
@@ -164,7 +163,10 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-		io.Copy(os.Stdout, resp.Body)
+		_, err = io.Copy(os.Stdout, resp.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
 		return
 	}
 
@@ -270,22 +272,4 @@ func ImpersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource,
 		return "", err
 	}
 	return response.AccessToken, nil
-}
-
-func ImpersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jws.ClaimSet) (string, error) {
-	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
-	if err != nil {
-		return "", err
-	}
-	projectsService := iamcredentials.NewProjectsService(service)
-
-	response, err := projectsService.ServiceAccounts.SignJwt(toName(serviceAccount),
-		&iamcredentials.SignJwtRequest{
-			Delegates: toNameSlice(delegateChain),
-			Payload: "",
-		}).Do()
-	if err != nil {
-		return "", err
-	}
-	return response.SignedJwt, nil
 }
