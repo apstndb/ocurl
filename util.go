@@ -37,3 +37,13 @@ func countTrue(bools ...bool) int {
 	return count
 }
 
+func splitInitLast(ss []string) ([]string, string) {
+	var initSlice []string
+	var lastElement string
+	if len(ss) > 0 {
+		initSlice = ss[:len(ss)-1]
+		lastElement = ss[len(ss)-1]
+	}
+	return initSlice, lastElement
+}
+

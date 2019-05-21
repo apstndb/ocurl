@@ -53,7 +53,7 @@ func main() {
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
 	flag.Parse()
 
-	serviceAccount, delegateChain := processImpersonateServiceAccount(impersonateServiceAccount)
+	delegateChain, serviceAccount := splitInitLast(impersonateServiceAccount)
 
 	ctx := context.Background()
 
@@ -162,16 +162,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func processImpersonateServiceAccount(impersonateServiceAccount []string) (string, []string) {
-	var serviceAccount string
-	var delegateChain []string
-	if len(impersonateServiceAccount) > 0 {
-		serviceAccount = impersonateServiceAccount[len(impersonateServiceAccount)-1]
-		delegateChain = impersonateServiceAccount[:len(impersonateServiceAccount)-1]
-	}
-	return serviceAccount, delegateChain
 }
 
 func KeyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
