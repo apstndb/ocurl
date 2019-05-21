@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jws"
 	"google.golang.org/api/iamcredentials/v1"
 	"google.golang.org/api/option"
 	"io"
@@ -36,6 +37,26 @@ func (ss *stringsType) Set(v string) error {
 	}
 	return nil
 }
+
+func firstNotEmpty(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func countTrue(bools ...bool) int {
+	count := 0
+	for _, b := range bools {
+		if b{
+			count++
+		}
+	}
+	return count
+}
+
 func main() {
 	var err error
 	var rawScopes stringsType
@@ -49,25 +70,22 @@ func main() {
 	var accessToken = flag.Bool("access-token", false, "Use access token")
 	var audience = flag.String("audience", "", "Audience")
 	var idToken = flag.Bool("id-token", false, "Use ID token")
+	var jwt = flag.Bool("jwt", false, "Use JWT")
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
 	flag.Parse()
 
-	var serviceAccount string
-	var delegateChain []string
-	if len(impersonateServiceAccount) > 0 {
-		serviceAccount = impersonateServiceAccount[len(impersonateServiceAccount)-1]
-		delegateChain = impersonateServiceAccount[:len(impersonateServiceAccount)-1]
-	}
+	serviceAccount, delegateChain := processImpersonateServiceAccount(impersonateServiceAccount)
+
 	ctx := context.Background()
 
 	var tokenString string
 	switch {
-	case *idToken && *accessToken:
-		log.Fatalln("--id-token and --access-token are exclusive")
+	case countTrue(*idToken, *accessToken, *jwt) == 0:
+		log.Fatalln("--id-token or --access-token or --jwt is required")
+	case countTrue(*idToken, *accessToken, *jwt) > 1:
+		log.Fatalln("--id-token and --access-token and --jwt are exclusive")
 	case *idToken && serviceAccount != "" && *audience == "":
 		log.Fatalln("--audience is required when --id-token is used")
-	case !*idToken && !*accessToken:
-		log.Fatalln("--id-token or --access-token are required")
 	case *idToken && len(rawScopes) != 0:
 		log.Fatalln("--id-token and --scopes are exclusive")
 	case *accessToken && *audience != "":
@@ -89,10 +107,14 @@ func main() {
 	if *gcloudAccount != "" {
 		*gcloud = true
 	}
+
 	var tokenSource oauth2.TokenSource
 	switch {
 	case *gcloud:
 		tokenSource, err = NewGcloudTokenSource(*gcloudAccount)
+	case *jwt && serviceAccount == "":
+		actualKeyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+		tokenSource, err = KeyFileJWTTokenSource(actualKeyFile, *audience)
 	case *keyFile != "":
 		tokenSource, err = KeyFileTokenSource(ctx, *keyFile, scopes)
 	default:
@@ -115,6 +137,10 @@ func main() {
 		tokenString, err = ImpersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
 	case *accessToken:
 		tokenString, err = GetAccessToken(tokenSource)
+	case *jwt && serviceAccount != "":
+		tokenString, err = GetAccessToken(tokenSource)
+	case *jwt:
+		tokenString, err = GetAccessToken(tokenSource)
 	default:
 		log.Fatalln("unknown branch")
 	}
@@ -130,10 +156,10 @@ func main() {
 
 	if *tokenInfo {
 		var resp *http.Response
-		if *accessToken {
-			resp, err = http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + tokenString)
-		} else {
+		if *idToken {
 			resp, err = http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" + tokenString)
+		} else {
+			resp, err = http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + tokenString)
 		}
 		if err != nil {
 			log.Fatalln(err)
@@ -153,6 +179,29 @@ func main() {
 		log.Fatalln(err)
 	}
 }
+
+func processImpersonateServiceAccount(impersonateServiceAccount []string) (string, []string) {
+	var serviceAccount string
+	var delegateChain []string
+	if len(impersonateServiceAccount) > 0 {
+		serviceAccount = impersonateServiceAccount[len(impersonateServiceAccount)-1]
+		delegateChain = impersonateServiceAccount[:len(impersonateServiceAccount)-1]
+	}
+	return serviceAccount, delegateChain
+}
+
+func KeyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
+	buf, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	config, err := google.JWTAccessTokenSourceFromJSON(buf, audience)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
 
 func KeyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
@@ -221,4 +270,22 @@ func ImpersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource,
 		return "", err
 	}
 	return response.AccessToken, nil
+}
+
+func ImpersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jws.ClaimSet) (string, error) {
+	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
+	if err != nil {
+		return "", err
+	}
+	projectsService := iamcredentials.NewProjectsService(service)
+
+	response, err := projectsService.ServiceAccounts.SignJwt(toName(serviceAccount),
+		&iamcredentials.SignJwtRequest{
+			Delegates: toNameSlice(delegateChain),
+			Payload: "",
+		}).Do()
+	if err != nil {
+		return "", err
+	}
+	return response.SignedJwt, nil
 }
