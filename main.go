@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/iamcredentials/v1"
 	"google.golang.org/api/option"
 	"io"
 	"io/ioutil"
@@ -15,17 +15,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
-
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/iamcredentials/v1"
 )
 
 type stringsType []string
 
 var defaultScope = []string{
-"https://www.googleapis.com/auth/cloud-platform",
-"https://www.googleapis.com/auth/userinfo.email",
+	"https://www.googleapis.com/auth/cloud-platform",
+	"https://www.googleapis.com/auth/userinfo.email",
 }
 
 func (ss *stringsType) String() string {
@@ -40,69 +36,6 @@ func (ss *stringsType) Set(v string) error {
 	}
 	return nil
 }
-
-type gcloudTokenSource struct {
-	account string
-}
-
-func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
-	var buf bytes.Buffer
-	args := []string{"config", "config-helper", "--format=json",  "--force-auth-refresh"}
-	if gts.account != "" {
-		args = append(args, "--account=" + gts.account)
-	}
-
-	cmd := exec.Command("gcloud", args...)
-	cmd.Stdout = &buf
-	err := cmd.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	parsed := struct {
-		Credential struct {
-			AccessToken string `json:"access_token"`
-			IdToken     string `json:"id_token"`
-			TokenExpiry string `json:"token_expiry"`
-		} `json:"credential"`
-	}{}
-	err = json.Unmarshal(buf.Bytes(), &parsed)
-	if err != nil {
-		return nil, err
-	}
-
-	expiry, err := time.Parse(time.RFC3339, parsed.Credential.TokenExpiry)
-	if err != nil {
-		return nil, err
-	}
-
-	return &oauth2.Token{
-		AccessToken: parsed.Credential.AccessToken,
-		Expiry: expiry,
-	}, nil
-}
-
-func NewGcloudTokenSource(account string) (oauth2.TokenSource, error) {
-	return &gcloudTokenSource{account}, nil
-}
-
-func GcloudIdToken(account string) (string, error) {
-	var buf bytes.Buffer
-	args := []string{"config", "config-helper", "--format=value(credential.id_token)",  "--force-auth-refresh"}
-	if account != "" {
-		args = append(args, "--account=" + account)
-	}
-
-	cmd := exec.Command("gcloud", args...)
-	cmd.Stdout = &buf
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(buf.String()), nil
-}
-
 func main() {
 	var err error
 	var rawScopes stringsType
