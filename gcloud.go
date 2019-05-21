@@ -54,11 +54,11 @@ func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
 	}, nil
 }
 
-func NewGcloudTokenSource(account string) (oauth2.TokenSource, error) {
+func newGcloudTokenSource(account string) (oauth2.TokenSource, error) {
 	return &gcloudTokenSource{account}, nil
 }
 
-func GcloudIdToken(account string) (string, error) {
+func gcloudIdToken(account string) (string, error) {
 	credential, err := getGcloudCredential(account)
 	if err != nil {
 		return "", err

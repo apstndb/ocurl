@@ -95,12 +95,12 @@ func main() {
 	var tokenSource oauth2.TokenSource
 	switch {
 	case *gcloud:
-		tokenSource, err = NewGcloudTokenSource(*gcloudAccount)
+		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
 	case *jwt && serviceAccount == "":
 		actualKeyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
-		tokenSource, err = KeyFileJWTTokenSource(actualKeyFile, *audience)
+		tokenSource, err = keyFileJWTTokenSource(actualKeyFile, *audience)
 	case *keyFile != "":
-		tokenSource, err = KeyFileTokenSource(ctx, *keyFile, scopes)
+		tokenSource, err = keyFileTokenSource(ctx, *keyFile, scopes)
 	default:
 		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
 	}
@@ -112,15 +112,15 @@ func main() {
 	switch {
 	case *idToken && *gcloud:
 		log.Println("Use experimental gcloud ID token.")
-		tokenString, err = GcloudIdToken(*gcloudAccount)
+		tokenString, err = gcloudIdToken(*gcloudAccount)
 	case *idToken && serviceAccount != "":
-		tokenString, err = ImpersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
+		tokenString, err = impersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
 	case *accessToken && serviceAccount != "":
-		tokenString, err = ImpersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
+		tokenString, err = impersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
 	case *jwt && serviceAccount != "":
-		tokenString, err = ImpersonateJWT(ctx, tokenSource, serviceAccount, delegateChain, claims(serviceAccount, *audience))
+		tokenString, err = impersonateJWT(ctx, tokenSource, serviceAccount, delegateChain, claims(serviceAccount, *audience))
 	case *accessToken, *jwt:
-		tokenString, err = GetAccessToken(tokenSource)
+		tokenString, err = getAccessToken(tokenSource)
 	default:
 		log.Fatalln("unknown branch")
 	}
@@ -164,7 +164,7 @@ func main() {
 	}
 }
 
-func KeyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
+func keyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func KeyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource,
 	return config, nil
 }
 
-func KeyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
+func keyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ func KeyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oa
 	return config.TokenSource(ctx), err
 }
 
-func GetAccessToken(tokenSource oauth2.TokenSource) (string, error) {
+func getAccessToken(tokenSource oauth2.TokenSource) (string, error) {
 	token, err := tokenSource.Token()
 	if err != nil {
 		return "", err
@@ -196,7 +196,7 @@ func GetAccessToken(tokenSource oauth2.TokenSource) (string, error) {
 	return token.AccessToken, nil
 }
 
-func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience string) (string, error) {
+func impersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience string) (string, error) {
 	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return "", err
@@ -215,7 +215,7 @@ func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, ser
 	return response.Token, nil
 }
 
-func ImpersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, scopes []string) (string, error) {
+func impersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, scopes []string) (string, error) {
 	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return "", err

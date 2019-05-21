@@ -21,7 +21,7 @@ func claims(account string, audience string) jwt.Claims {
 	}
 }
 
-func ImpersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jwt.Claims) (string, error) {
+func impersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jwt.Claims) (string, error) {
 	j, err := json.Marshal(claims)
 	if err != nil {
 		return "", err
