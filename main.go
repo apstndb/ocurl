@@ -176,7 +176,6 @@ func KeyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource,
 	return config, nil
 }
 
-
 func KeyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {

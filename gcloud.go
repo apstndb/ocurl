@@ -13,16 +13,16 @@ type gcloudTokenSource struct {
 }
 
 type gcloudCredential struct {
-	AccessToken string `json:"access_token"`
-	IdToken     string `json:"id_token"`
+	AccessToken string    `json:"access_token"`
+	IdToken     string    `json:"id_token"`
 	TokenExpiry time.Time `json:"token_expiry"`
 }
 
 func getGcloudCredential(account string) (*gcloudCredential, error) {
 	var buf bytes.Buffer
-	args := []string{"config", "config-helper", "--format=json",  "--force-auth-refresh"}
+	args := []string{"config", "config-helper", "--format=json", "--force-auth-refresh"}
 	if account != "" {
-		args = append(args, "--account=" + account)
+		args = append(args, "--account="+account)
 	}
 
 	cmd := exec.Command("gcloud", args...)
@@ -50,7 +50,7 @@ func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
 
 	return &oauth2.Token{
 		AccessToken: parsed.AccessToken,
-		Expiry: parsed.TokenExpiry,
+		Expiry:      parsed.TokenExpiry,
 	}, nil
 }
 
@@ -65,4 +65,3 @@ func GcloudIdToken(account string) (string, error) {
 	}
 	return credential.IdToken, nil
 }
-

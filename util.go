@@ -30,7 +30,7 @@ func firstNotEmpty(ss ...string) string {
 func countTrue(bools ...bool) int {
 	count := 0
 	for _, b := range bools {
-		if b{
+		if b {
 			count++
 		}
 	}
@@ -46,4 +46,3 @@ func splitInitLast(ss []string) ([]string, string) {
 	}
 	return initSlice, lastElement
 }
-

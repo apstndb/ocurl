@@ -13,10 +13,10 @@ import (
 func claims(account string, audience string) jwt.Claims {
 	now := time.Now().UTC()
 	return jwt.StandardClaims{
-		Issuer: account,
-		Subject: account,
-		Audience: audience,
-		IssuedAt: now.Unix(),
+		Issuer:    account,
+		Subject:   account,
+		Audience:  audience,
+		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(1 * time.Hour).Unix(),
 	}
 }
