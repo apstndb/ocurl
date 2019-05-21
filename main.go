@@ -83,6 +83,7 @@ func main() {
 		scopes = defaultScopes
 	}
 
+	// --gcloud-account implies --gcloud
 	if *gcloudAccount != "" {
 		*gcloud = true
 	}
@@ -109,13 +110,13 @@ func main() {
 		log.Println("Use experimental gcloud ID token.")
 		tokenString, err = GcloudIdToken(*gcloudAccount)
 	case *idToken && serviceAccount != "":
-		tokenString, err = ImpersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, audience)
+		tokenString, err = ImpersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
 	case *accessToken && serviceAccount != "":
 		tokenString, err = ImpersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
 	case *accessToken:
 		tokenString, err = GetAccessToken(tokenSource)
 	case *jwt && serviceAccount != "":
-		tokenString, err = GetAccessToken(tokenSource)
+		tokenString, err = ImpersonateJWT(ctx, tokenSource, serviceAccount, delegateChain, claims(serviceAccount, *audience))
 	case *jwt:
 		tokenString, err = GetAccessToken(tokenSource)
 	default:
@@ -203,7 +204,7 @@ func GetAccessToken(tokenSource oauth2.TokenSource) (string, error) {
 	return token.AccessToken, nil
 }
 
-func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience *string) (string, error) {
+func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience string) (string, error) {
 	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return "", err
@@ -212,7 +213,7 @@ func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, ser
 
 	response, err := projectsService.ServiceAccounts.GenerateIdToken(toName(serviceAccount),
 		&iamcredentials.GenerateIdTokenRequest{
-			Audience:     *audience,
+			Audience:     audience,
 			Delegates:    toNames(delegateChain),
 			IncludeEmail: true,
 		}).Do()
