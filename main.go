@@ -96,9 +96,11 @@ func main() {
 	switch {
 	case *gcloud:
 		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
+	// jwt uses JWTAccessTokenSourceFromJSON if not impersonate
 	case *jwt && serviceAccount == "":
 		actualKeyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 		tokenSource, err = keyFileJWTTokenSource(actualKeyFile, *audience)
+	// uses JWTConfig.TokenSource if keyFile is set
 	case *keyFile != "":
 		tokenSource, err = keyFileTokenSource(ctx, *keyFile, scopes)
 	default:
