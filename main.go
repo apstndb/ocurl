@@ -17,43 +17,23 @@ import (
 	"strings"
 )
 
-type stringsType []string
-
-var defaultScope = []string{
+var defaultScopes = []string{
 	"https://www.googleapis.com/auth/cloud-platform",
 	"https://www.googleapis.com/auth/userinfo.email",
 }
 
-func (ss *stringsType) String() string {
-	return fmt.Sprintf("%v", *ss)
+const scopePrefix = "https://www.googleapis.com/auth/"
+
+func toName(serviceAccount string) string {
+	return "projects/-/serviceAccounts/" + serviceAccount
 }
 
-const authPrefix = "https://www.googleapis.com/auth/"
-
-func (ss *stringsType) Set(v string) error {
-	for _, scope := range strings.Split(v, ",") {
-		*ss = append(*ss, scope)
+func toNames(serviceAccounts []string) []string {
+	var slice []string
+	for _, s := range serviceAccounts {
+		slice = append(slice, toName(s))
 	}
-	return nil
-}
-
-func firstNotEmpty(ss ...string) string {
-	for _, s := range ss {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
-}
-
-func countTrue(bools ...bool) int {
-	count := 0
-	for _, b := range bools {
-		if b{
-			count++
-		}
-	}
-	return count
+	return slice
 }
 
 func main() {
@@ -93,14 +73,14 @@ func main() {
 
 	var scopes []string
 	for _, s := range rawScopes {
-		if !strings.HasPrefix(s, authPrefix) {
-			s = authPrefix + s
+		if !strings.HasPrefix(s, scopePrefix) {
+			s = scopePrefix + s
 		}
 		scopes = append(scopes, s)
 	}
 
 	if len(scopes) == 0 {
-		scopes = defaultScope
+		scopes = defaultScopes
 	}
 
 	if *gcloudAccount != "" {
@@ -123,8 +103,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	log.Println("tokenSource is created")
 
 	switch {
 	case *idToken && *gcloud:
@@ -225,18 +203,6 @@ func GetAccessToken(tokenSource oauth2.TokenSource) (string, error) {
 	return token.AccessToken, nil
 }
 
-func toName(serviceAccount string) string {
-	return "projects/-/serviceAccounts/" + serviceAccount
-}
-
-func toNameSlice(serviceAccounts []string) []string {
-	var slice []string
-	for _, s := range serviceAccounts {
-		slice = append(slice, toName(s))
-	}
-	return slice
-}
-
 func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience *string) (string, error) {
 	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
@@ -247,7 +213,7 @@ func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, ser
 	response, err := projectsService.ServiceAccounts.GenerateIdToken(toName(serviceAccount),
 		&iamcredentials.GenerateIdTokenRequest{
 			Audience:     *audience,
-			Delegates: toNameSlice(delegateChain),
+			Delegates:    toNames(delegateChain),
 			IncludeEmail: true,
 		}).Do()
 	if err != nil {
@@ -265,8 +231,8 @@ func ImpersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource,
 
 	response, err := projectsService.ServiceAccounts.GenerateAccessToken(toName(serviceAccount),
 		&iamcredentials.GenerateAccessTokenRequest{
-			Scope: scopes,
-			Delegates: toNameSlice(delegateChain),
+			Scope:     scopes,
+			Delegates: toNames(delegateChain),
 		}).Do()
 	if err != nil {
 		return "", err
