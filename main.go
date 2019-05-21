@@ -41,7 +41,7 @@ func main() {
 	var rawScopes stringsType
 	flag.Var(&rawScopes, "scopes", "Scopes")
 	var impersonateServiceAccount stringsType
-	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Delegates")
+	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Specify delegate chain(near to far order). Implies --gcloud")
 	var printToken = flag.Bool("print-token", false, "Print token")
 	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
 	var gcloud = flag.Bool("gcloud", false, "gcloud default account")
@@ -69,6 +69,10 @@ func main() {
 		log.Fatalln("--id-token and --scopes are exclusive")
 	case *accessToken && *audience != "":
 		log.Fatalln("--access-token and --audience are exclusive")
+	case *printToken && *tokenInfo:
+		log.Fatalln("--print-token and --token-info are exclusive")
+	case (*printToken || *tokenInfo) && flag.NArg() > 0:
+		log.Fatalln("remaining argument is not permitted when --print-token or --token-info")
 	}
 
 	var scopes []string
@@ -113,11 +117,9 @@ func main() {
 		tokenString, err = ImpersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
 	case *accessToken && serviceAccount != "":
 		tokenString, err = ImpersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
-	case *accessToken:
-		tokenString, err = GetAccessToken(tokenSource)
 	case *jwt && serviceAccount != "":
 		tokenString, err = ImpersonateJWT(ctx, tokenSource, serviceAccount, delegateChain, claims(serviceAccount, *audience))
-	case *jwt:
+	case *accessToken, *jwt:
 		tokenString, err = GetAccessToken(tokenSource)
 	default:
 		log.Fatalln("unknown branch")
@@ -155,6 +157,7 @@ func main() {
 	cmd := exec.Command("curl", args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
 	err = cmd.Run()
 	if err != nil {
 		log.Fatalln(err)
