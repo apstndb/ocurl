@@ -99,10 +99,10 @@ func main() {
 	// jwt uses JWTAccessTokenSourceFromJSON if not impersonate
 	case *jwt && serviceAccount == "":
 		actualKeyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
-		tokenSource, err = keyFileJWTTokenSource(actualKeyFile, *audience)
+		tokenSource, err = jwtAccessTokenSource(actualKeyFile, *audience)
 	// uses JWTConfig.TokenSource if keyFile is set
 	case *keyFile != "":
-		tokenSource, err = keyFileTokenSource(ctx, *keyFile, scopes)
+		tokenSource, err = jwtConfigTokenSource(ctx, *keyFile, scopes)
 	default:
 		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
 	}
@@ -166,7 +166,7 @@ func main() {
 	}
 }
 
-func keyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
+func jwtAccessTokenSource(keyFile string, audience string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func keyFileJWTTokenSource(keyFile string, audience string) (oauth2.TokenSource,
 	return config, nil
 }
 
-func keyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
+func jwtConfigTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
