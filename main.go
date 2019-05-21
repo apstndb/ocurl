@@ -3,14 +3,19 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/iamcredentials/v1"
@@ -36,10 +41,59 @@ func (ss *stringsType) Set(v string) error {
 	return nil
 }
 
-func GcloudIdToken() (string, error) {
-	var buf bytes.Buffer
+type gcloudTokenSource struct {
+	account string
+}
 
-	cmd := exec.Command("gcloud", "config", "config-helper", "--format=value(credential.id_token)",  "--force-auth-refresh")
+func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
+	var buf bytes.Buffer
+	args := []string{"config", "config-helper", "--format=json",  "--force-auth-refresh"}
+	if gts.account != "" {
+		args = append(args, "--account=" + gts.account)
+	}
+
+	cmd := exec.Command("gcloud", args...)
+	cmd.Stdout = &buf
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	parsed := struct {
+		Credential struct {
+			AccessToken string `json:"access_token"`
+			IdToken     string `json:"id_token"`
+			TokenExpiry string `json:"token_expiry"`
+		} `json:"credential"`
+	}{}
+	err = json.Unmarshal(buf.Bytes(), &parsed)
+	if err != nil {
+		return nil, err
+	}
+
+	expiry, err := time.Parse(time.RFC3339, parsed.Credential.TokenExpiry)
+	if err != nil {
+		return nil, err
+	}
+
+	return &oauth2.Token{
+		AccessToken: parsed.Credential.AccessToken,
+		Expiry: expiry,
+	}, nil
+}
+
+func NewGcloudTokenSource(account string) (oauth2.TokenSource, error) {
+	return &gcloudTokenSource{account}, nil
+}
+
+func GcloudIdToken(account string) (string, error) {
+	var buf bytes.Buffer
+	args := []string{"config", "config-helper", "--format=value(credential.id_token)",  "--force-auth-refresh"}
+	if account != "" {
+		args = append(args, "--account=" + account)
+	}
+
+	cmd := exec.Command("gcloud", args...)
 	cmd.Stdout = &buf
 	err := cmd.Run()
 	if err != nil {
@@ -56,6 +110,9 @@ func main() {
 	var impersonateServiceAccount stringsType
 	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Delegates")
 	var printToken = flag.Bool("print-token", false, "Print token")
+	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
+	var gcloud = flag.Bool("gcloud", false, "gcloud default account")
+	var gcloudAccount = flag.String("gcloud-account", "", "gcloud registered account")
 	var accessToken = flag.Bool("access-token", false, "Use access token")
 	var audience = flag.String("audience", "", "Audience")
 	var idToken = flag.Bool("id-token", false, "Use ID token")
@@ -96,16 +153,35 @@ func main() {
 		scopes = defaultScope
 	}
 
+	if *gcloudAccount != "" {
+		*gcloud = true
+	}
+	var tokenSource oauth2.TokenSource
 	switch {
-	case *idToken && serviceAccount == "":
-		log.Println("--service-account is missing. Use experimental gcloud ID token.")
-		tokenString, err = GcloudIdToken()
+	case *gcloud:
+		tokenSource, err = NewGcloudTokenSource(*gcloudAccount)
+	case *keyFile != "":
+		tokenSource, err = KeyFileTokenSource(ctx, *keyFile, scopes)
+	default:
+		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
+	}
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Println("tokenSource is created")
+
+	switch {
+	case *idToken && *gcloud:
+		log.Println("Use experimental gcloud ID token.")
+		tokenString, err = GcloudIdToken(*gcloudAccount)
 	case *idToken && serviceAccount != "":
-		tokenString, err = ImpersonateIdToken(ctx, serviceAccount, delegateChain, audience)
-	case *accessToken && serviceAccount == "":
-		tokenString, err = DefaultAccessToken(ctx)
+		tokenString, err = ImpersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, audience)
 	case *accessToken && serviceAccount != "":
-		tokenString, err = ImpersonateAccessToken(ctx, serviceAccount, delegateChain, scopes)
+		tokenString, err = ImpersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
+	case *accessToken:
+		tokenString, err = GetAccessToken(tokenSource)
 	default:
 		log.Fatalln("unknown branch")
 	}
@@ -145,11 +221,19 @@ func main() {
 	}
 }
 
-func DefaultAccessToken(ctx context.Context) (string, error) {
-	tokenSource, err := google.DefaultTokenSource(ctx, defaultScope...)
+func KeyFileTokenSource(ctx context.Context, keyFile string, scope []string) (oauth2.TokenSource, error) {
+	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	config, err := google.JWTConfigFromJSON(buf, scope...)
+	if err != nil {
+		return nil, err
+	}
+	return config.TokenSource(ctx), err
+}
+
+func GetAccessToken(tokenSource oauth2.TokenSource) (string, error) {
 	token, err := tokenSource.Token()
 	if err != nil {
 		return "", err
@@ -169,8 +253,8 @@ func toNameSlice(serviceAccounts []string) []string {
 	return slice
 }
 
-func ImpersonateIdToken(ctx context.Context, serviceAccount string, delegateChain []string, audience *string) (string, error) {
-	service, err := iamcredentials.NewService(ctx)
+func ImpersonateIdToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience *string) (string, error) {
+	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return "", err
 	}
@@ -188,8 +272,8 @@ func ImpersonateIdToken(ctx context.Context, serviceAccount string, delegateChai
 	return response.Token, nil
 }
 
-func ImpersonateAccessToken(ctx context.Context, serviceAccount string, delegateChain []string, scopes []string) (string, error) {
-	service, err := iamcredentials.NewService(ctx)
+func ImpersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, scopes []string) (string, error) {
+	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
 	if err != nil {
 		return "", err
 	}
