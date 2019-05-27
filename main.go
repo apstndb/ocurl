@@ -38,20 +38,33 @@ func toNames(serviceAccounts []string) []string {
 
 func main() {
 	var err error
-	var rawScopes stringsType
-	flag.Var(&rawScopes, "scopes", "Scopes")
-	var impersonateServiceAccount stringsType
-	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Specify delegate chain(near to far order). Implies --gcloud")
-	var printToken = flag.Bool("print-token", false, "Print token")
-	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
-	var gcloud = flag.Bool("gcloud", false, "gcloud default account")
-	var gcloudAccount = flag.String("gcloud-account", "", "gcloud registered account")
+
+	// token types
 	var accessToken = flag.Bool("access-token", false, "Use access token")
-	var audience = flag.String("audience", "", "Audience")
 	var idToken = flag.Bool("id-token", false, "Use ID token")
 	var jwt = flag.Bool("jwt", false, "Use JWT")
+
+	// token sources
+	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
+	var gcloud = flag.Bool("gcloud", false, "gcloud default account")
+	var gcloudAccount = flag.String("gcloud-account", "", "gcloud registered account(implies --gcloud)")
 	var adc = flag.Bool("adc", false, "Use Application Default Credentials")
+
+	// impersonate chain
+	var impersonateServiceAccount stringsType
+	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Specify delegate chain(near to far order). Implies --gcloud")
+
+	// action
+	var printToken = flag.Bool("print-token", false, "Print token")
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
+
+	// id token option
+	var audience = flag.String("audience", "", "Audience")
+
+	// access token option
+	var rawScopes stringsType
+	flag.Var(&rawScopes, "scopes", "Scopes")
+
 	flag.Parse()
 
 	delegateChain, serviceAccount := splitInitLast(impersonateServiceAccount)
@@ -62,8 +75,6 @@ func main() {
 	if *gcloudAccount != "" {
 		*gcloud = true
 	}
-
-	*keyFile = firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
 	var tokenString string
 	switch {
@@ -103,9 +114,10 @@ func main() {
 		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
 	// jwt uses JWTAccessTokenSourceFromJSON if not impersonate
 	case *jwt && serviceAccount == "":
-		tokenSource, err = jwtAccessTokenSource(*keyFile, *audience)
+		keyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+		tokenSource, err = jwtAccessTokenSource(keyFile, *audience)
 	// uses JWTConfig.TokenSource if keyFile is set
-	case *jwt && *keyFile != "":
+	case *keyFile != "":
 		tokenSource, err = jwtConfigTokenSource(ctx, *keyFile, scopes)
 	default:
 		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
