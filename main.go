@@ -50,6 +50,7 @@ func main() {
 	var audience = flag.String("audience", "", "Audience")
 	var idToken = flag.Bool("id-token", false, "Use ID token")
 	var jwt = flag.Bool("jwt", false, "Use JWT")
+	var adc = flag.Bool("adc", false, "Use Application Default Credentials")
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
 	flag.Parse()
 
@@ -57,12 +58,21 @@ func main() {
 
 	ctx := context.Background()
 
+	// --gcloud-account implies --gcloud
+	if *gcloudAccount != "" {
+		*gcloud = true
+	}
+
+	*keyFile = firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+
 	var tokenString string
 	switch {
 	case countTrue(*idToken, *accessToken, *jwt) == 0:
 		log.Fatalln("--id-token or --access-token or --jwt is required")
 	case countTrue(*idToken, *accessToken, *jwt) > 1:
 		log.Fatalln("--id-token and --access-token and --jwt are exclusive")
+	case countTrue(*gcloud, *adc, *keyFile != "") == 0:
+		log.Fatalln("credential source is required")
 	case *idToken && serviceAccount != "" && *audience == "":
 		log.Fatalln("--audience is required when --id-token is used")
 	case *idToken && len(rawScopes) != 0:
@@ -87,21 +97,15 @@ func main() {
 		scopes = defaultScopes
 	}
 
-	// --gcloud-account implies --gcloud
-	if *gcloudAccount != "" {
-		*gcloud = true
-	}
-
 	var tokenSource oauth2.TokenSource
 	switch {
 	case *gcloud:
 		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
 	// jwt uses JWTAccessTokenSourceFromJSON if not impersonate
 	case *jwt && serviceAccount == "":
-		actualKeyFile := firstNotEmpty(*keyFile, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
-		tokenSource, err = jwtAccessTokenSource(actualKeyFile, *audience)
+		tokenSource, err = jwtAccessTokenSource(*keyFile, *audience)
 	// uses JWTConfig.TokenSource if keyFile is set
-	case *keyFile != "":
+	case *jwt && *keyFile != "":
 		tokenSource, err = jwtConfigTokenSource(ctx, *keyFile, scopes)
 	default:
 		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
@@ -112,11 +116,11 @@ func main() {
 	}
 
 	switch {
+	case *idToken && serviceAccount != "":
+		tokenString, err = impersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
 	case *idToken && *gcloud:
 		log.Println("Use experimental gcloud ID token.")
 		tokenString, err = gcloudIdToken(*gcloudAccount)
-	case *idToken && serviceAccount != "":
-		tokenString, err = impersonateIdToken(ctx, tokenSource, serviceAccount, delegateChain, *audience)
 	case *accessToken && serviceAccount != "":
 		tokenString, err = impersonateAccessToken(ctx, tokenSource, serviceAccount, delegateChain, scopes)
 	case *jwt && serviceAccount != "":
