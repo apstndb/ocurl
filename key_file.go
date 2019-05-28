@@ -6,6 +6,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 	"io/ioutil"
+	"log"
 )
 
 type keyFileTokenSource struct {
@@ -56,6 +57,17 @@ func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...strin
 	}
 
 	return token.AccessToken, nil
+}
+
+func (kfts *keyFileTokenSource) IDToken(ctx context.Context, audience string) (string, error) {
+	tokenSource, err := jwtConfigTokenSource(ctx, kfts.jsonKey, defaultScopes...)
+	if err != nil {
+		return "", err
+	}
+
+	log.Println("Currently, ID token from key-file needs Service Account Token Creator role")
+	tokenString, err := impersonateIdToken(ctx, tokenSource, kfts.cfg.Email, nil, audience)
+	return tokenString, err
 }
 
 func (kfts *keyFileTokenSource) JWTToken(ctx context.Context, audience string) (string, error) {
