@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"io"
 	"log"
 	"net/http"
@@ -37,23 +36,23 @@ func main() {
 	var err error
 
 	// token types
-	var accessToken = flag.Bool("access-token", false, "Use access token")
-	var idToken = flag.Bool("id-token", false, "Use ID token")
-	var jwt = flag.Bool("jwt", false, "Use JWT")
+	var accessTokenFlag = flag.Bool("access-token", false, "Use access token")
+	var idTokenFlag = flag.Bool("id-token", false, "Use ID token")
+	var jwtFlag = flag.Bool("jwt", false, "Use JWT")
 
 	// token sources
 	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
-	var gcloud = flag.Bool("gcloud", false, "gcloud default account")
+	var gcloudFlag = flag.Bool("gcloud", false, "gcloud default account")
 	var gcloudAccount = flag.String("gcloud-account", "", "gcloud registered account(implies --gcloud)")
-	var adc = flag.Bool("adc", false, "Use Application Default Credentials")
+	var metadataFlag = flag.Bool("metadata", false, "Use metadata token source")
 
 	// impersonate chain
 	var impersonateServiceAccount stringsType
 	flag.Var(&impersonateServiceAccount, "impersonate-service-account", "Specify delegate chain(near to far order). Implies --gcloud")
 
 	// action
-	var printToken = flag.Bool("print-token", false, "Print token")
-	var tokenInfo = flag.Bool("token-info", false, "Print token info")
+	var printTokenFlag = flag.Bool("print-token", false, "Print token")
+	var tokenInfoFlag = flag.Bool("token-info", false, "Print token info")
 	var decodeTokenFlag = flag.Bool("decode-token", false, "Print local decoded token")
 
 	// id token option
@@ -69,32 +68,32 @@ func main() {
 
 	ctx := context.Background()
 
-	// --gcloud-account implies --gcloud
+	// --gcloudFlag-account implies --gcloudFlag
 	if *gcloudAccount != "" {
-		*gcloud = true
+		*gcloudFlag = true
 	}
 
 	keyEnv := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 	var tokenString string
 	switch {
-	case countTrue(*idToken, *accessToken, *jwt) == 0:
+	case countTrue(*idTokenFlag, *accessTokenFlag, *jwtFlag) == 0:
 		log.Fatalln("--id-token or --access-token or --jwt is required")
-	case countTrue(*idToken, *accessToken, *jwt) > 1:
+	case countTrue(*idTokenFlag, *accessTokenFlag, *jwtFlag) > 1:
 		log.Fatalln("--id-token and --access-token and --jwt are exclusive")
-	case countTrue(*gcloud, *adc, *keyFile != "", keyEnv != "") == 0:
+	case countTrue(*gcloudFlag, *metadataFlag, *keyFile != "", keyEnv != "") == 0:
 		log.Fatalln("credential source is required")
-	case countTrue(*gcloud, *adc, *keyFile != "") > 1:
+	case countTrue(*gcloudFlag, *metadataFlag, *keyFile != "") > 1:
 		log.Fatalln("credential source are exclusive")
-	case *idToken && serviceAccount != "" && *audience == "":
+	case *idTokenFlag && serviceAccount != "" && *audience == "":
 		log.Fatalln("--audience is required when --id-token is used")
-	case *idToken && len(rawScopes) != 0:
+	case *idTokenFlag && len(rawScopes) != 0:
 		log.Fatalln("--id-token and --scopes are exclusive")
-	case *accessToken && *audience != "":
+	case *accessTokenFlag && *audience != "":
 		log.Fatalln("--access-token and --audience are exclusive")
-	case *printToken && *tokenInfo:
+	case *printTokenFlag && *tokenInfoFlag:
 		log.Fatalln("--print-token and --token-info are exclusive")
-	case (*printToken || *tokenInfo) && flag.NArg() > 0:
+	case (*printTokenFlag || *tokenInfoFlag) && flag.NArg() > 0:
 		log.Fatalln("remaining argument is not permitted when --print-token or --token-info")
 	}
 
@@ -112,14 +111,16 @@ func main() {
 
 	var tokenSource TokenSource
 	switch {
-	case *gcloud:
+	case *gcloudFlag:
 		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
 	case *keyFile != "":
 		tokenSource, err = newKeyFileTokenSourceFromFile(*keyFile)
+	case *metadataFlag:
+		tokenSource, err = newMetadataTokenSource("")
 	case keyEnv != "":
 		tokenSource, err = newKeyFileTokenSourceFromFile(keyEnv)
 	default:
-		tokenSource, err = google.DefaultTokenSource(ctx, scopes...)
+		log.Fatalln("token source is missing")
 	}
 
 	if serviceAccount != "" {
@@ -130,11 +131,11 @@ func main() {
 	}
 
 	switch {
-	case *idToken:
+	case *idTokenFlag:
 		tokenString, err = IDToken(ctx, tokenSource, *audience)
-	case *accessToken:
+	case *accessTokenFlag:
 		tokenString, err = AccessToken(ctx, tokenSource, scopes...)
-	case *jwt:
+	case *jwtFlag:
 		tokenString, err = JWTToken(ctx, tokenSource, *audience)
 	default:
 		log.Fatalln("unknown branch")
@@ -145,24 +146,24 @@ func main() {
 	}
 
 	switch {
-	case *decodeTokenFlag && *accessToken:
+	case *decodeTokenFlag && *accessTokenFlag:
 		log.Println("--access-token can't work with --decode-token, fallback to --token-info")
-		*tokenInfo = true
+		*tokenInfoFlag = true
 		*decodeTokenFlag = false
-	case *tokenInfo && *jwt:
+	case *tokenInfoFlag && *jwtFlag:
 		log.Println("--jwt can't work with --token-info, fallback to --decode-token")
-		*tokenInfo = false
+		*tokenInfoFlag = false
 		*decodeTokenFlag = true
 	}
 
-	if *printToken {
+	if *printTokenFlag {
 		fmt.Println(tokenString)
 		return
 	}
 
-	if *tokenInfo {
+	if *tokenInfoFlag {
 		var resp *http.Response
-		if *idToken {
+		if *idTokenFlag {
 			resp, err = http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" + tokenString)
 		} else {
 			resp, err = http.Get("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" + tokenString)

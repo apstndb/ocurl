@@ -64,8 +64,9 @@ func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...strin
 	return token.AccessToken, nil
 }
 const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+const tokenURL = "https://www.googleapis.com/oauth2/v4/token"
+
 func (kfts *keyFileTokenSource) IDToken(ctx context.Context, audience string) (string, error) {
-	tokenURL := "https://www.googleapis.com/oauth2/v4/token"
 	claims := claims(kfts.Email(), tokenURL, audience)
 	block, _ := pem.Decode(kfts.cfg.PrivateKey)
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
