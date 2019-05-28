@@ -18,15 +18,6 @@ func (ss *stringsType) Set(v string) error {
 	return nil
 }
 
-func firstNotEmpty(ss ...string) string {
-	for _, s := range ss {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
-}
-
 func countTrue(bools ...bool) int {
 	count := 0
 	for _, b := range bools {

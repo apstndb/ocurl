@@ -63,6 +63,7 @@ func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...strin
 
 	return token.AccessToken, nil
 }
+
 const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 const tokenURL = "https://www.googleapis.com/oauth2/v4/token"
 
@@ -75,6 +76,9 @@ func (kfts *keyFileTokenSource) IDToken(ctx context.Context, audience string) (s
 	}
 
 	signedJWT, err := sign(claims, key)
+	if err != nil {
+		return "", err
+	}
 
 	v := url.Values{}
 	v.Set("grant_type", defaultGrantType)
@@ -128,14 +132,6 @@ func jwtAccessTokenSource(json []byte, audience string) (oauth2.TokenSource, err
 	return config, nil
 }
 
-func jwtAccessTokenSourceFromFile(keyFile string, audience string) (oauth2.TokenSource, error) {
-	buf, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-	return jwtAccessTokenSource(buf, audience)
-}
-
 func jwtConfigTokenSource(ctx context.Context, json []byte, scopes ...string) (oauth2.TokenSource, error) {
 	config, err := google.JWTConfigFromJSON(json, scopes...)
 	if err != nil {
@@ -144,10 +140,3 @@ func jwtConfigTokenSource(ctx context.Context, json []byte, scopes ...string) (o
 	return config.TokenSource(ctx), err
 }
 
-func jwtConfigTokenSourceFromFile(ctx context.Context, keyFile string, scopes ...string) (oauth2.TokenSource, error) {
-	buf, err := ioutil.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-	return jwtConfigTokenSource(ctx, buf, scopes...)
-}

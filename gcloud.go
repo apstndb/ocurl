@@ -48,14 +48,6 @@ func getGcloudConfig(account string) (*gcloudConfig, error) {
 	return &parsed, nil
 }
 
-func getGcloudCredential(account string) (*gcloudCredential, error) {
-	config, err := getGcloudConfig(account)
-	if err != nil {
-		return nil, err
-	}
-	return &config.Credential, nil
-}
-
 func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{
 		AccessToken: gts.cfg.Credential.AccessToken,
@@ -70,14 +62,6 @@ func newGcloudTokenSource(account string) (oauth2.TokenSource, error) {
 	}
 
 	return &gcloudTokenSource{cfg}, nil
-}
-
-func gcloudIdToken(account string) (string, error) {
-	credential, err := getGcloudCredential(account)
-	if err != nil {
-		return "", err
-	}
-	return credential.IdToken, nil
 }
 
 func (gts *gcloudTokenSource) Email() (string, error) {

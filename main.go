@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
 	"log"
 	"net/http"
@@ -116,7 +115,7 @@ func main() {
 	case *keyFile != "":
 		tokenSource, err = newKeyFileTokenSourceFromFile(*keyFile)
 	case *metadataFlag:
-		tokenSource, err = newMetadataTokenSource("")
+		tokenSource, err = newMetadataTokenSourceDefault()
 	case keyEnv != "":
 		tokenSource, err = newKeyFileTokenSourceFromFile(keyEnv)
 	default:
@@ -199,12 +198,4 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-}
-
-func getAccessToken(tokenSource oauth2.TokenSource) (string, error) {
-	token, err := tokenSource.Token()
-	if err != nil {
-		return "", err
-	}
-	return token.AccessToken, nil
 }

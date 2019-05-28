@@ -16,12 +16,17 @@ func newMetadataTokenSource(account string) (*metadataTokenSource, error) {
 	return &metadataTokenSource{account: account}, nil
 }
 
+func newMetadataTokenSourceDefault() (*metadataTokenSource, error) {
+	return newMetadataTokenSource("")
+}
+
 func orDefault(v string, def string) string {
 	if v == "" {
 		return def
 	}
 	return v
 }
+
 func (gts *metadataTokenSource) Token() (*oauth2.Token, error) {
 	tokenSource := google.ComputeTokenSource(gts.account)
 	return tokenSource.Token()
@@ -53,4 +58,3 @@ func (gts *metadataTokenSource) Email(ctx context.Context, audience string) (str
 	}
 	return tokenString, err
 }
-
