@@ -57,6 +57,7 @@ func main() {
 	// action
 	var printToken = flag.Bool("print-token", false, "Print token")
 	var tokenInfo = flag.Bool("token-info", false, "Print token info")
+	var decodeTokenFlag = flag.Bool("decode-token", false, "Print local decoded token")
 
 	// id token option
 	var audience = flag.String("audience", "", "Audience")
@@ -166,6 +167,16 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
+		return
+	}
+
+	if *decodeTokenFlag {
+		var b []byte
+		b, err = decodeToken(tokenString)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println(string(b))
 		return
 	}
 

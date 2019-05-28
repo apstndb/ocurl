@@ -21,6 +21,19 @@ func claims(account string, audience string) jwt.Claims {
 	}
 }
 
+func decodeToken(tokenString string) ([]byte, error) {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		return nil, err
+	}
+	b, err := json.MarshalIndent(&token.Claims, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
 func impersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jwt.Claims) (string, error) {
 	j, err := json.Marshal(claims)
 	if err != nil {
