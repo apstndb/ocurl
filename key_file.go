@@ -139,4 +139,3 @@ func jwtConfigTokenSource(ctx context.Context, json []byte, scopes ...string) (o
 	}
 	return config.TokenSource(ctx), err
 }
-
