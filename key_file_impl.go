@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jwt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
 )
 
 const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"

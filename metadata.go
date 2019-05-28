@@ -1,11 +1,12 @@
 package main
 
 import (
-	"cloud.google.com/go/compute/metadata"
 	"context"
+	"net/url"
+
+	"cloud.google.com/go/compute/metadata"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"net/url"
 )
 
 type metadataTokenSource struct {
