@@ -1,44 +1,39 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/oauth2"
-	"google.golang.org/api/iamcredentials/v1"
-	"google.golang.org/api/option"
 	"time"
 )
 
-func claims(account string, audience string) jwt.Claims {
-	now := time.Now().UTC()
-	return jwt.StandardClaims{
-		Issuer:    account,
-		Subject:   account,
-		Audience:  audience,
-		IssuedAt:  now.Unix(),
-		ExpiresAt: now.Add(1 * time.Hour).Unix(),
-	}
+func sign(claims jwt.Claims, key interface{}) (string, error) {
+	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
 }
 
-func impersonateJWT(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, claims jwt.Claims) (string, error) {
-	j, err := json.Marshal(claims)
-	if err != nil {
-		return "", err
+func claims(account string, audience string, targetAudience string) jwt.Claims {
+	now := time.Now().UTC()
+	claims := jwt.MapClaims{
+		"iss": account,
+		"sub": account,
+		"aud": audience,
+		"iat": now.Unix(),
+		"exp": now.Add(time.Hour).Unix(),
 	}
-	service, err := iamcredentials.NewService(ctx, option.WithTokenSource(tokenSource))
-	if err != nil {
-		return "", err
+	if targetAudience != "" {
+		claims["target_audience"] = targetAudience
 	}
-	projectsService := iamcredentials.NewProjectsService(service)
+	return claims
+}
 
-	response, err := projectsService.ServiceAccounts.SignJwt(toName(serviceAccount),
-		&iamcredentials.SignJwtRequest{
-			Delegates: toNames(delegateChain),
-			Payload:   string(j),
-		}).Do()
+func decodeToken(tokenString string) ([]byte, error) {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return response.SignedJwt, nil
+	b, err := json.MarshalIndent(&token.Claims, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
