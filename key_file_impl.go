@@ -53,10 +53,7 @@ func idTokenImpl(signedJWT string) (string, error) {
 	}
 	// tokenRes is the JSON response body.
 	var tokenRes struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-		IDToken     string `json:"id_token"`
-		ExpiresIn   int64  `json:"expires_in"` // relative seconds from now
+		IDToken string `json:"id_token"`
 	}
 	if err := json.Unmarshal(body, &tokenRes); err != nil {
 		return "", fmt.Errorf("oauth2: cannot fetch token: %v", err)

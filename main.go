@@ -131,6 +131,11 @@ func main() {
 		tokenSource = ImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
 	}
 
+	if email, err := Email(tokenSource); err == nil {
+		log.Println("Use account:", email)
+	} else {
+		log.Println("Can't get email:", err)
+	}
 	ctx := context.Background()
 
 	var tokenString string
