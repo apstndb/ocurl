@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"golang.org/x/oauth2"
 	"os/exec"
@@ -9,7 +10,7 @@ import (
 )
 
 type gcloudTokenSource struct {
-	account string
+	cfg *gcloudConfig
 }
 
 type gcloudCredential struct {
@@ -18,9 +19,16 @@ type gcloudCredential struct {
 	TokenExpiry time.Time `json:"token_expiry"`
 }
 
-func getGcloudCredential(account string) (*gcloudCredential, error) {
+type gcloudConfig struct {
+	Credential gcloudCredential `json:"credential"`
+	Core struct{
+		Account string `json:"account"`
+	} `json:"core"`
+}
+
+func getGcloudConfig(account string) (*gcloudConfig, error) {
 	var buf bytes.Buffer
-	args := []string{"config", "config-helper", "--format=json", "--force-auth-refresh"}
+	args := []string{"config", "config-helper", "--format=json"}
 	if account != "" {
 		args = append(args, "--account="+account)
 	}
@@ -32,30 +40,36 @@ func getGcloudCredential(account string) (*gcloudCredential, error) {
 		return nil, err
 	}
 
-	parsed := struct {
-		Credential gcloudCredential `json:"credential"`
-	}{}
+	var parsed gcloudConfig
 	err = json.Unmarshal(buf.Bytes(), &parsed)
 	if err != nil {
 		return nil, err
 	}
-	return &parsed.Credential, nil
+	return &parsed, nil
 }
 
-func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
-	parsed, err := getGcloudCredential(gts.account)
+func getGcloudCredential(account string) (*gcloudCredential, error) {
+	config, err := getGcloudConfig(account)
 	if err != nil {
 		return nil, err
 	}
+	return &config.Credential, nil
+}
 
+func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{
-		AccessToken: parsed.AccessToken,
-		Expiry:      parsed.TokenExpiry,
+		AccessToken: gts.cfg.Credential.AccessToken,
+		Expiry:      gts.cfg.Credential.TokenExpiry,
 	}, nil
 }
 
 func newGcloudTokenSource(account string) (oauth2.TokenSource, error) {
-	return &gcloudTokenSource{account}, nil
+	cfg, err := getGcloudConfig(account)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gcloudTokenSource{cfg}, nil
 }
 
 func gcloudIdToken(account string) (string, error) {
@@ -65,3 +79,16 @@ func gcloudIdToken(account string) (string, error) {
 	}
 	return credential.IdToken, nil
 }
+
+func (gts *gcloudTokenSource) Email() (string, error) {
+	return gts.cfg.Core.Account, nil
+}
+
+func (gts *gcloudTokenSource) AccessTokenWithoutScopes(ctx context.Context) (string, error) {
+	return gts.cfg.Credential.AccessToken, nil
+}
+
+func (gts *gcloudTokenSource) IDTokenWithoutAudience(ctx context.Context) (string, error) {
+	return gts.cfg.Credential.IdToken, nil
+}
+
