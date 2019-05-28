@@ -32,8 +32,6 @@ func toNames(serviceAccounts []string) []string {
 }
 
 func main() {
-	var err error
-
 	// token types
 	var accessTokenFlag = flag.Bool("access-token", false, "Use access token")
 	var idTokenFlag = flag.Bool("id-token", false, "Use ID token")
@@ -65,16 +63,25 @@ func main() {
 
 	delegateChain, serviceAccount := splitInitLast(impersonateServiceAccount)
 
-	ctx := context.Background()
-
 	// --gcloud-account implies --gcloud
 	if *gcloudAccount != "" {
 		*gcloudFlag = true
 	}
 
+	// adjust action
+	switch {
+	case *decodeTokenFlag && *accessTokenFlag:
+		log.Println("--access-token can't work with --decode-token, fallback to --token-info")
+		*tokenInfoFlag = true
+		*decodeTokenFlag = false
+	case *tokenInfoFlag && *jwtFlag:
+		log.Println("--jwt can't work with --token-info, fallback to --decode-token")
+		*tokenInfoFlag = false
+		*decodeTokenFlag = true
+	}
+
 	keyEnv := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-	var tokenString string
 	switch {
 	case countTrue(*idTokenFlag, *accessTokenFlag, *jwtFlag) == 0:
 		log.Fatalln("--id-token or --access-token or --jwt is required")
@@ -92,22 +99,16 @@ func main() {
 		log.Fatalln("--access-token and --audience are exclusive")
 	case *printTokenFlag && *tokenInfoFlag:
 		log.Fatalln("--print-token and --token-info are exclusive")
-	case (*printTokenFlag || *tokenInfoFlag) && flag.NArg() > 0:
-		log.Fatalln("remaining argument is not permitted when --print-token or --token-info")
+	case (*printTokenFlag || *tokenInfoFlag || *decodeTokenFlag) && flag.NArg() > 0:
+		log.Fatalln("remaining argument is not permitted when --print-token or --token-info or --decode-token")
 	}
 
-	var scopes []string
-	for _, s := range rawScopes {
-		if !strings.HasPrefix(s, scopePrefix) {
-			s = scopePrefix + s
-		}
-		scopes = append(scopes, s)
-	}
-
+	scopes := normalizeScopes(rawScopes)
 	if len(scopes) == 0 {
 		scopes = defaultScopes
 	}
 
+	var err error
 	var tokenSource TokenSource
 	switch {
 	case *gcloudFlag:
@@ -122,13 +123,17 @@ func main() {
 		log.Fatalln("token source is missing")
 	}
 
-	if serviceAccount != "" {
-		tokenSource = ImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
-	}
 	if err != nil {
 		log.Fatalln(err)
 	}
 
+	if serviceAccount != "" {
+		tokenSource = ImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
+	}
+
+	ctx := context.Background()
+
+	var tokenString string
 	switch {
 	case *idTokenFlag:
 		tokenString, err = IDToken(ctx, tokenSource, *audience)
@@ -142,17 +147,6 @@ func main() {
 
 	if err != nil {
 		log.Fatalln(err)
-	}
-
-	switch {
-	case *decodeTokenFlag && *accessTokenFlag:
-		log.Println("--access-token can't work with --decode-token, fallback to --token-info")
-		*tokenInfoFlag = true
-		*decodeTokenFlag = false
-	case *tokenInfoFlag && *jwtFlag:
-		log.Println("--jwt can't work with --token-info, fallback to --decode-token")
-		*tokenInfoFlag = false
-		*decodeTokenFlag = true
 	}
 
 	if *printTokenFlag {
@@ -198,4 +192,15 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+}
+
+func normalizeScopes(rawScopes []string) []string {
+	var scopes []string
+	for _, s := range rawScopes {
+		if !strings.HasPrefix(s, scopePrefix) {
+			s = scopePrefix + s
+		}
+		scopes = append(scopes, s)
+	}
+	return scopes
 }
