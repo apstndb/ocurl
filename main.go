@@ -111,19 +111,19 @@ func main() {
 	var tokenSource TokenSource
 	switch {
 	case *gcloudFlag:
-		tokenSource, err = newGcloudTokenSource(*gcloudAccount)
+		tokenSource, err = GcloudTokenSource(*gcloudAccount)
 	case *keyFile != "":
-		tokenSource, err = newKeyFileTokenSourceFromFile(*keyFile)
+		tokenSource, err = KeyFileTokenSourceFromFile(*keyFile)
 	case *metadataFlag:
-		tokenSource, err = newMetadataTokenSourceDefault()
+		tokenSource, err = MetadataTokenSourceDefault()
 	case keyEnv != "":
-		tokenSource, err = newKeyFileTokenSourceFromFile(keyEnv)
+		tokenSource, err = KeyFileTokenSourceFromFile(keyEnv)
 	default:
 		log.Fatalln("token source is missing")
 	}
 
 	if serviceAccount != "" {
-		tokenSource = newImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
+		tokenSource = ImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
 	}
 	if err != nil {
 		log.Fatalln(err)

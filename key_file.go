@@ -2,17 +2,10 @@ package main
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/json"
-	"encoding/pem"
-	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
-	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 )
 
 type keyFileTokenSource struct {
@@ -20,15 +13,15 @@ type keyFileTokenSource struct {
 	cfg     *jwt.Config
 }
 
-func newKeyFileTokenSourceFromFile(keyFile string) (*keyFileTokenSource, error) {
+func KeyFileTokenSourceFromFile(keyFile string) (*keyFileTokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
-	return newKeyFileTokenSource(buf)
+	return KeyFileTokenSource(buf)
 }
 
-func newKeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
+func KeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
 	cfg, err := google.JWTConfigFromJSON(jsonKey)
 	if err != nil {
 		return nil, err
@@ -64,51 +57,12 @@ func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...strin
 	return token.AccessToken, nil
 }
 
-const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-const tokenURL = "https://www.googleapis.com/oauth2/v4/token"
-
 func (kfts *keyFileTokenSource) IDToken(ctx context.Context, audience string) (string, error) {
-	claims := claims(kfts.Email(), tokenURL, audience)
-	block, _ := pem.Decode(kfts.cfg.PrivateKey)
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	signedJWT, err := signJWTForIdToken(kfts.cfg, audience)
 	if err != nil {
 		return "", err
 	}
-
-	signedJWT, err := sign(claims, key)
-	if err != nil {
-		return "", err
-	}
-
-	v := url.Values{}
-	v.Set("grant_type", defaultGrantType)
-	v.Set("assertion", signedJWT)
-	resp, err := http.PostForm(tokenURL, v)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return "", fmt.Errorf("oauth2: cannot fetch token: %v", err)
-	}
-	if c := resp.StatusCode; c < 200 || c > 299 {
-		return "", &oauth2.RetrieveError{
-			Response: resp,
-			Body:     body,
-		}
-	}
-	// tokenRes is the JSON response body.
-	var tokenRes struct {
-		AccessToken string `json:"access_token"`
-		TokenType   string `json:"token_type"`
-		IDToken     string `json:"id_token"`
-		ExpiresIn   int64  `json:"expires_in"` // relative seconds from now
-	}
-	if err := json.Unmarshal(body, &tokenRes); err != nil {
-		return "", fmt.Errorf("oauth2: cannot fetch token: %v", err)
-	}
-	return tokenRes.IDToken, nil
+	return idTokenImpl(signedJWT)
 }
 
 func (kfts *keyFileTokenSource) JWTToken(ctx context.Context, audience string) (string, error) {
@@ -122,20 +76,4 @@ func (kfts *keyFileTokenSource) JWTToken(ctx context.Context, audience string) (
 		return "", err
 	}
 	return token.AccessToken, nil
-}
-
-func jwtAccessTokenSource(json []byte, audience string) (oauth2.TokenSource, error) {
-	config, err := google.JWTAccessTokenSourceFromJSON(json, audience)
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
-}
-
-func jwtConfigTokenSource(ctx context.Context, json []byte, scopes ...string) (oauth2.TokenSource, error) {
-	config, err := google.JWTConfigFromJSON(json, scopes...)
-	if err != nil {
-		return nil, err
-	}
-	return config.TokenSource(ctx), err
 }

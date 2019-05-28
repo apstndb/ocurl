@@ -28,6 +28,13 @@ func countTrue(bools ...bool) int {
 	return count
 }
 
+func orDefault(v string, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
+}
+
 func splitInitLast(ss []string) ([]string, string) {
 	var initSlice []string
 	var lastElement string
