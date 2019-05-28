@@ -67,7 +67,7 @@ func main() {
 
 	ctx := context.Background()
 
-	// --gcloudFlag-account implies --gcloudFlag
+	// --gcloud-account implies --gcloud
 	if *gcloudAccount != "" {
 		*gcloudFlag = true
 	}
