@@ -41,6 +41,6 @@ func (its *impersonateTokenSource) JWTToken(ctx context.Context, audience string
 	return impersonateJWT(ctx, its.sourceTokenSource, its.serviceAccount, its.delegateChain, claims(its.serviceAccount, audience, ""))
 }
 
-func (its *impersonateTokenSource) Email(audience string) (string, error) {
+func (its *impersonateTokenSource) Email() (string, error) {
 	return its.serviceAccount, nil
 }

@@ -16,9 +16,13 @@ type gcloudConfig struct {
 		IdToken     string    `json:"id_token"`
 		TokenExpiry time.Time `json:"token_expiry"`
 	} `json:"credential"`
-	Core struct {
-		Account string `json:"account"`
-	} `json:"core"`
+	Configuration struct{
+		Properties struct {
+			Core struct {
+				Account string `json:"account"`
+			} `json:"core"`
+		} `json:"properties"`
+	} `json:"configuration"`
 }
 
 func GcloudTokenSource(account string) (oauth2.TokenSource, error) {
@@ -38,7 +42,7 @@ func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func (gts *gcloudTokenSource) Email() (string, error) {
-	return gts.cfg.Core.Account, nil
+	return gts.cfg.Configuration.Properties.Core.Account, nil
 }
 
 func (gts *gcloudTokenSource) AccessTokenWithoutScopes(ctx context.Context) (string, error) {
