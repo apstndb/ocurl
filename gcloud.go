@@ -21,7 +21,7 @@ type gcloudCredential struct {
 
 type gcloudConfig struct {
 	Credential gcloudCredential `json:"credential"`
-	Core struct{
+	Core       struct {
 		Account string `json:"account"`
 	} `json:"core"`
 }
@@ -91,4 +91,3 @@ func (gts *gcloudTokenSource) AccessTokenWithoutScopes(ctx context.Context) (str
 func (gts *gcloudTokenSource) IDTokenWithoutAudience(ctx context.Context) (string, error) {
 	return gts.cfg.Credential.IdToken, nil
 }
-

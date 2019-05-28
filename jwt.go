@@ -6,15 +6,23 @@ import (
 	"time"
 )
 
-func claims(account string, audience string) jwt.Claims {
+func sign(claims jwt.Claims, key interface{}) (string, error) {
+	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
+}
+
+func claims(account string, audience string, targetAudience string) jwt.Claims {
 	now := time.Now().UTC()
-	return jwt.StandardClaims{
-		Issuer:    account,
-		Subject:   account,
-		Audience:  audience,
-		IssuedAt:  now.Unix(),
-		ExpiresAt: now.Add(1 * time.Hour).Unix(),
+	claims := jwt.MapClaims{
+		"iss": account,
+		"sub": account,
+		"aud": audience,
+		"iat": now.Unix(),
+		"exp": now.Add(time.Hour).Unix(),
 	}
+	if targetAudience != "" {
+		claims["target_audience"] = targetAudience
+	}
+	return claims
 }
 
 func decodeToken(tokenString string) ([]byte, error) {

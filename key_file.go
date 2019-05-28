@@ -2,11 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
+	"io"
 	"io/ioutil"
-	"log"
+	"net/http"
+	"net/url"
 )
 
 type keyFileTokenSource struct {
@@ -21,7 +27,6 @@ func newKeyFileTokenSourceFromFile(keyFile string) (*keyFileTokenSource, error) 
 	}
 	return newKeyFileTokenSource(buf)
 }
-
 
 func newKeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
 	cfg, err := google.JWTConfigFromJSON(jsonKey)
@@ -58,16 +63,47 @@ func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...strin
 
 	return token.AccessToken, nil
 }
-
+const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 func (kfts *keyFileTokenSource) IDToken(ctx context.Context, audience string) (string, error) {
-	tokenSource, err := jwtConfigTokenSource(ctx, kfts.jsonKey, defaultScopes...)
+	tokenURL := "https://www.googleapis.com/oauth2/v4/token"
+	claims := claims(kfts.Email(), tokenURL, audience)
+	block, _ := pem.Decode(kfts.cfg.PrivateKey)
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return "", err
 	}
 
-	log.Println("Currently, ID token from key-file needs Service Account Token Creator role")
-	tokenString, err := impersonateIdToken(ctx, tokenSource, kfts.cfg.Email, nil, audience)
-	return tokenString, err
+	signedJWT, err := sign(claims, key)
+
+	v := url.Values{}
+	v.Set("grant_type", defaultGrantType)
+	v.Set("assertion", signedJWT)
+	resp, err := http.PostForm(tokenURL, v)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("oauth2: cannot fetch token: %v", err)
+	}
+	if c := resp.StatusCode; c < 200 || c > 299 {
+		return "", &oauth2.RetrieveError{
+			Response: resp,
+			Body:     body,
+		}
+	}
+	// tokenRes is the JSON response body.
+	var tokenRes struct {
+		AccessToken string `json:"access_token"`
+		TokenType   string `json:"token_type"`
+		IDToken     string `json:"id_token"`
+		ExpiresIn   int64  `json:"expires_in"` // relative seconds from now
+	}
+	if err := json.Unmarshal(body, &tokenRes); err != nil {
+		return "", fmt.Errorf("oauth2: cannot fetch token: %v", err)
+	}
+	return tokenRes.IDToken, nil
 }
 
 func (kfts *keyFileTokenSource) JWTToken(ctx context.Context, audience string) (string, error) {
