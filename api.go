@@ -74,7 +74,7 @@ func JWTToken(ctx context.Context, tokenSource TokenSource, audience string) (st
 			return "", err
 		}
 		email, err := Email(tokenSource)
-		log.Println("JWTToken: fallback to impersonateJWTForAudience")
+		log.Println("JWTToken: fallback to impersonateJWTForAudience. It needs service account token creator")
 		return impersonateJWTForAudience(ctx, oauth2TokenSource, email, nil, audience)
 	}
 }
