@@ -8,7 +8,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-type wellKnownTokenSource struct{
+type wellKnownTokenSource struct {
 	wellKnownJSON []byte
 }
 
