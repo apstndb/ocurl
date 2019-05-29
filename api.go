@@ -69,7 +69,13 @@ func JWTToken(ctx context.Context, tokenSource TokenSource, audience string) (st
 	case HasJWTToken:
 		return ts.JWTToken(ctx, audience)
 	default:
-		return "", errors.New("token source can't issue JWT token")
+		oauth2TokenSource, err := OAuth2TokenSource(ctx, tokenSource, defaultScopes...)
+		if err != nil {
+			return "", err
+		}
+		email, err := Email(tokenSource)
+		log.Println("JWTToken: fallback to impersonateJWTForAudience")
+		return impersonateJWTForAudience(ctx, oauth2TokenSource, email, nil, audience)
 	}
 }
 
