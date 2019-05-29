@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"errors"
-	"golang.org/x/oauth2"
 	"log"
+
+	"golang.org/x/oauth2"
 )
 
 type TokenSource interface {

@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 func sign(claims jwt.Claims, key interface{}) (string, error) {

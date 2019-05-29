@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"golang.org/x/oauth2"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 type gcloudTokenSource struct {
@@ -16,7 +17,7 @@ type gcloudConfig struct {
 		IdToken     string    `json:"id_token"`
 		TokenExpiry time.Time `json:"token_expiry"`
 	} `json:"credential"`
-	Configuration struct{
+	Configuration struct {
 		Properties struct {
 			Core struct {
 				Account string `json:"account"`
