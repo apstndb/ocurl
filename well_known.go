@@ -30,6 +30,7 @@ func (wkts *wellKnownTokenSource) Token() (*oauth2.Token, error) {
 }
 
 func (wkts *wellKnownTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
+	// TODO google.CredentialsFromJSON take scopes but it seems no effect.
 	creds, err := google.CredentialsFromJSON(ctx, wkts.wellKnownJSON, scopes...)
 	if err != nil {
 		return "", err
