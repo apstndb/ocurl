@@ -30,8 +30,8 @@ func KeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
 	return &keyFileTokenSource{jsonKey: jsonKey, cfg: cfg}, nil
 }
 
-func (kfts *keyFileTokenSource) Email() string {
-	return kfts.cfg.Email
+func (kfts *keyFileTokenSource) Email() (string, error) {
+	return kfts.cfg.Email, nil
 }
 
 func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
