@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"time"
-
-	"golang.org/x/oauth2"
 )
 
 type gcloudTokenSource struct {
@@ -13,9 +10,8 @@ type gcloudTokenSource struct {
 
 type gcloudConfig struct {
 	Credential struct {
-		AccessToken string    `json:"access_token"`
-		IdToken     string    `json:"id_token"`
-		TokenExpiry time.Time `json:"token_expiry"`
+		AccessToken string `json:"access_token"`
+		IdToken     string `json:"id_token"`
 	} `json:"credential"`
 	Configuration struct {
 		Properties struct {
@@ -26,20 +22,13 @@ type gcloudConfig struct {
 	} `json:"configuration"`
 }
 
-func GcloudTokenSource(account string) (oauth2.TokenSource, error) {
+func GcloudTokenSource(account string) (TokenSource, error) {
 	cfg, err := fetchGcloudConfig(account)
 	if err != nil {
 		return nil, err
 	}
 
 	return &gcloudTokenSource{cfg}, nil
-}
-
-func (gts *gcloudTokenSource) Token() (*oauth2.Token, error) {
-	return &oauth2.Token{
-		AccessToken: gts.cfg.Credential.AccessToken,
-		Expiry:      gts.cfg.Credential.TokenExpiry,
-	}, nil
 }
 
 func (gts *gcloudTokenSource) Email() (string, error) {

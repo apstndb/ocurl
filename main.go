@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/oauth2"
 )
 
 var defaultScopes = []string{
@@ -130,8 +132,15 @@ func main() {
 		log.Fatalln(err)
 	}
 
+	ctx := context.Background()
 	if serviceAccount != "" {
-		tokenSource = ImpersonateTokenSource(tokenSource, serviceAccount, delegateChain...)
+		var oauth2TokenSource oauth2.TokenSource
+		oauth2TokenSource, err = OAuth2TokenSource(ctx, tokenSource, defaultScopes...)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		tokenSource = ImpersonateTokenSource(oauth2TokenSource, serviceAccount, delegateChain...)
 	}
 
 	if email, err := Email(tokenSource); err == nil {
@@ -139,7 +148,6 @@ func main() {
 	} else {
 		log.Println("Can't get email:", err)
 	}
-	ctx := context.Background()
 
 	var tokenString string
 	switch {

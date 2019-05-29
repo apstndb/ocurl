@@ -20,16 +20,6 @@ func ImpersonateTokenSource(sourceTokenSource oauth2.TokenSource, serviceAccount
 	}
 }
 
-func (its *impersonateTokenSource) Token() (*oauth2.Token, error) {
-	tokenString, err := AccessToken(context.Background(), its)
-	if err != nil {
-		return nil, err
-	}
-	return &oauth2.Token{
-		AccessToken: tokenString,
-	}, nil
-}
-
 func (its *impersonateTokenSource) IDToken(ctx context.Context, audience string) (string, error) {
 	return impersonateIdToken(ctx, its.sourceTokenSource, its.serviceAccount, its.delegateChain, audience)
 }
