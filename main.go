@@ -40,6 +40,7 @@ func main() {
 	// token sources
 	var keyFile = flag.String("key-file", "", "Service Account JSON Key")
 	var gcloudFlag = flag.Bool("gcloud", false, "gcloud default account")
+	var wellKnownFlag = flag.Bool("well-known", false, "well known file credential")
 	var gcloudAccount = flag.String("gcloud-account", "", "gcloud registered account(implies --gcloud)")
 	var metadataFlag = flag.Bool("metadata", false, "Use metadata token source")
 
@@ -87,9 +88,9 @@ func main() {
 		log.Fatalln("--id-token or --access-token or --jwt is required")
 	case countTrue(*idTokenFlag, *accessTokenFlag, *jwtFlag) > 1:
 		log.Fatalln("--id-token and --access-token and --jwt are exclusive")
-	case countTrue(*gcloudFlag, *metadataFlag, *keyFile != "", keyEnv != "") == 0:
+	case countTrue(*gcloudFlag, *metadataFlag, *wellKnownFlag, *keyFile != "", keyEnv != "") == 0:
 		log.Fatalln("credential source is required")
-	case countTrue(*gcloudFlag, *metadataFlag, *keyFile != "") > 1:
+	case countTrue(*gcloudFlag, *metadataFlag, *wellKnownFlag, *keyFile != "") > 1:
 		log.Fatalln("credential source are exclusive")
 	case *idTokenFlag && serviceAccount != "" && *audience == "":
 		log.Fatalln("--audience is required when --id-token is used")
@@ -113,6 +114,8 @@ func main() {
 	switch {
 	case *gcloudFlag:
 		tokenSource, err = GcloudTokenSource(*gcloudAccount)
+	case *wellKnownFlag:
+		tokenSource, err = WellKnownTokenSource()
 	case *keyFile != "":
 		tokenSource, err = KeyFileTokenSourceFromFile(*keyFile)
 	case *metadataFlag:
