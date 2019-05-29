@@ -2,35 +2,41 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
 type wellKnownTokenSource struct{
-	creds *google.Credentials
+	wellKnownJSON []byte
 }
 
 func WellKnownTokenSource() (*wellKnownTokenSource, error) {
-	if creds, err := wellKnownFileCredentials(context.Background(), defaultScopes...); err == nil {
-		return &wellKnownTokenSource{creds}, nil
-	} else {
+	filename := wellKnownFile()
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
 		return nil, err
 	}
+	return &wellKnownTokenSource{b}, nil
 }
 
 func (wkts *wellKnownTokenSource) Token() (*oauth2.Token, error) {
-	return wkts.creds.TokenSource.Token()
+	creds, err := google.CredentialsFromJSON(context.Background(), wkts.wellKnownJSON, defaultScopes...)
+	if err != nil {
+		return nil, err
+	}
+	return creds.TokenSource.Token()
 }
 
 func (wkts *wellKnownTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
-	if creds, err := wellKnownFileCredentials(ctx, scopes...); err == nil {
-		if token, err := creds.TokenSource.Token(); err == nil {
-			return token.AccessToken, nil
-		} else {
-			return "", err
-		}
-	} else {
+	creds, err := google.CredentialsFromJSON(ctx, wkts.wellKnownJSON, scopes...)
+	if err != nil {
 		return "", err
 	}
+	token, err := creds.TokenSource.Token()
+	if err != nil {
+		return "", err
+	}
+	return token.AccessToken, nil
 }

@@ -1,28 +1,13 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-
-	"golang.org/x/oauth2/google"
 )
 
 // copy from golang.org/x/oauth2/google.FindDefaultCredentials
-func wellKnownFileCredentials(ctx context.Context, scopes ...string) (*google.Credentials, error) {
-	filename := wellKnownFile()
-	if creds, err := readCredentialsFile(ctx, filename, scopes); err == nil {
-		return creds, nil
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("google: error getting credentials using well-known file (%v): %v", filename, err)
-	}
-	return nil, fmt.Errorf("google: could not find well-known file credentials")
-}
-
 func wellKnownFile() string {
 	const f = "application_default_credentials.json"
 	if runtime.GOOS == "windows" {
@@ -41,12 +26,4 @@ func guessUnixHomeDir() string {
 		return u.HomeDir
 	}
 	return ""
-}
-
-func readCredentialsFile(ctx context.Context, filename string, scopes []string) (*google.Credentials, error) {
-	b, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return google.CredentialsFromJSON(ctx, b, scopes...)
 }
