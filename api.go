@@ -8,9 +8,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type TokenSource interface {
-	oauth2.TokenSource
-}
+type TokenSource interface{}
 
 type HasAccessTokenWithoutScopes interface {
 	TokenSource
@@ -50,12 +48,7 @@ func AccessToken(ctx context.Context, tokenSource TokenSource, scopes ...string)
 		log.Println("fallback to AccessTokenWithoutScopes")
 		return ts.AccessTokenWithoutScopes(ctx)
 	default:
-		log.Println("fallback to oauth2.TokenSource")
-		token, err := ts.Token()
-		if err != nil {
-			return "", err
-		}
-		return token.AccessToken, nil
+		return "", errors.New("token source can't issue access token")
 	}
 }
 
@@ -87,4 +80,12 @@ func Email(tokenSource TokenSource) (string, error) {
 	default:
 		return "", errors.New("token source hasn't email")
 	}
+}
+
+func OAuth2TokenSource(ctx context.Context, tokenSource TokenSource, scopes ...string) (oauth2.TokenSource, error) {
+	tokenString, err := AccessToken(ctx, tokenSource, scopes...)
+	if err != nil {
+		return nil, err
+	}
+	return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenString}), nil
 }

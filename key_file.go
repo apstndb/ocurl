@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 )
@@ -33,15 +32,6 @@ func KeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
 
 func (kfts *keyFileTokenSource) Email() string {
 	return kfts.cfg.Email
-}
-
-func (kfts *keyFileTokenSource) Token() (*oauth2.Token, error) {
-	token, err := kfts.cfg.TokenSource(context.Background()).Token()
-	if err != nil {
-		return nil, err
-	}
-
-	return token, nil
 }
 
 func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
