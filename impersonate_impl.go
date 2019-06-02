@@ -47,7 +47,6 @@ func impersonateAccessToken(ctx context.Context, tokenSource oauth2.TokenSource,
 	return response.AccessToken, nil
 }
 
-
 func impersonateJWTForAudience(ctx context.Context, tokenSource oauth2.TokenSource, serviceAccount string, delegateChain []string, audience string) (string, error) {
 	return impersonateJWT(ctx, tokenSource, serviceAccount, delegateChain, claims(serviceAccount, audience, ""))
 }
