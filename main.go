@@ -210,10 +210,12 @@ func main() {
 	}
 }
 
+var openidScopes = []string{"openid", "profile", "email"}
+
 func normalizeScopes(rawScopes []string) []string {
 	var scopes []string
 	for _, s := range rawScopes {
-		if !strings.HasPrefix(s, scopePrefix) {
+		if !strings.HasPrefix(s, scopePrefix) && !contains(openidScopes, s) {
 			s = scopePrefix + s
 		}
 		scopes = append(scopes, s)
