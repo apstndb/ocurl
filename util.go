@@ -28,6 +28,15 @@ func countTrue(bools ...bool) int {
 	return count
 }
 
+func contains(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func orDefault(v string, def string) string {
 	if v == "" {
 		return def
