@@ -13,19 +13,20 @@ type keyFileTokenSource struct {
 	cfg     *jwt.Config
 }
 
-func KeyFileTokenSourceFromFile(keyFile string) (*keyFileTokenSource, error) {
+func KeyFileTokenSourceFromFile(keyFile string, subject string) (*keyFileTokenSource, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
 	}
-	return KeyFileTokenSource(buf)
+	return KeyFileTokenSource(buf, subject)
 }
 
-func KeyFileTokenSource(jsonKey []byte) (*keyFileTokenSource, error) {
+func KeyFileTokenSource(jsonKey []byte, subject string) (*keyFileTokenSource, error) {
 	cfg, err := google.JWTConfigFromJSON(jsonKey)
 	if err != nil {
 		return nil, err
 	}
+	cfg.Subject = subject
 
 	return &keyFileTokenSource{jsonKey: jsonKey, cfg: cfg}, nil
 }
@@ -35,7 +36,7 @@ func (kfts *keyFileTokenSource) Email() (string, error) {
 }
 
 func (kfts *keyFileTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
-	tokenSource, err := jwtConfigTokenSource(ctx, kfts.jsonKey, scopes...)
+	tokenSource, err := jwtConfigTokenSource(ctx, kfts.jsonKey, kfts.cfg.Subject, scopes...)
 	if err != nil {
 		return "", err
 	}

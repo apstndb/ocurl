@@ -58,6 +58,8 @@ func main() {
 	// id token option
 	var audience = flag.String("audience", "", "Audience")
 
+	var subject = flag.String("subject", "", "Subject")
+
 	// access token option
 	var rawScopes stringsType
 	flag.Var(&rawScopes, "scopes", "Scopes")
@@ -119,11 +121,11 @@ func main() {
 	case *wellKnownFlag:
 		tokenSource, err = WellKnownTokenSource()
 	case *keyFile != "":
-		tokenSource, err = KeyFileTokenSourceFromFile(*keyFile)
+		tokenSource, err = KeyFileTokenSourceFromFile(*keyFile, *subject)
 	case *metadataFlag:
 		tokenSource, err = MetadataTokenSourceDefault()
 	case keyEnv != "":
-		tokenSource, err = KeyFileTokenSourceFromFile(keyEnv)
+		tokenSource, err = KeyFileTokenSourceFromFile(keyEnv, *subject)
 	default:
 		log.Fatalln("token source is missing")
 	}

@@ -17,10 +17,12 @@ import (
 )
 
 const defaultGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-const tokenURL = "https://www.googleapis.com/oauth2/v4/token"
+
+// const tokenURL = "https://www.googleapis.com/oauth2/v4/token"
+const tokenURL = "https://oauth2.googleapis.com/token"
 
 func signJWTForIdToken(cfg *jwt.Config, audience string) (string, error) {
-	claims := claims(cfg.Email, tokenURL, audience)
+	claims := claims(cfg.Email, tokenURL, cfg.Subject, audience)
 	block, _ := pem.Decode(cfg.PrivateKey)
 	if block.Type != "PRIVATE KEY" {
 		return "", fmt.Errorf("unknown key file: %s", block.Type)
@@ -71,10 +73,11 @@ func jwtAccessTokenSource(json []byte, audience string) (oauth2.TokenSource, err
 	return config, nil
 }
 
-func jwtConfigTokenSource(ctx context.Context, json []byte, scopes ...string) (oauth2.TokenSource, error) {
+func jwtConfigTokenSource(ctx context.Context, json []byte, subject string, scopes ...string) (oauth2.TokenSource, error) {
 	config, err := google.JWTConfigFromJSON(json, scopes...)
 	if err != nil {
 		return nil, err
 	}
+	config.Subject = subject
 	return config.TokenSource(ctx), err
 }

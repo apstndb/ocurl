@@ -11,11 +11,14 @@ func sign(claims jwt.Claims, key interface{}) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
 }
 
-func claims(account string, audience string, targetAudience string) jwt.Claims {
+func claims(account string, audience string, subject string, targetAudience string) jwt.Claims {
+	if subject == "" {
+		subject = account
+	}
 	now := time.Now().UTC()
 	claims := jwt.MapClaims{
 		"iss": account,
-		"sub": account,
+		"sub": subject,
 		"aud": audience,
 		"iat": now.Unix(),
 		"exp": now.Add(time.Hour).Unix(),

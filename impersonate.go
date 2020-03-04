@@ -29,7 +29,7 @@ func (its *impersonateTokenSource) AccessToken(ctx context.Context, scopes ...st
 }
 
 func (its *impersonateTokenSource) JWTToken(ctx context.Context, audience string) (string, error) {
-	return impersonateJWT(ctx, its.sourceTokenSource, its.serviceAccount, its.delegateChain, claims(its.serviceAccount, audience, ""))
+	return impersonateJWT(ctx, its.sourceTokenSource, its.serviceAccount, its.delegateChain, claims(its.serviceAccount, audience, "", ""))
 }
 
 func (its *impersonateTokenSource) Email() (string, error) {
