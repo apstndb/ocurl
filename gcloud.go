@@ -8,7 +8,11 @@ type gcloudTokenSource struct {
 	cfg *gcloudConfig
 }
 
-var _ interface{HasAccessTokenWithoutScopes; HasIDTokenWithoutAudience; HasEmail } = &gcloudTokenSource{}
+var _ interface {
+	HasAccessTokenWithoutScopes
+	HasIDTokenWithoutAudience
+	HasEmail
+} = &gcloudTokenSource{}
 
 type gcloudConfig struct {
 	Credential struct {

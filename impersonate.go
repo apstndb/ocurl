@@ -12,7 +12,12 @@ type impersonateTokenSource struct {
 	delegateChain     []string
 }
 
-var _ interface{HasAccessToken; HasIDToken; HasEmail; HasJWTToken} = &impersonateTokenSource{}
+var _ interface {
+	HasAccessToken
+	HasIDToken
+	HasEmail
+	HasJWTToken
+} = &impersonateTokenSource{}
 
 func ImpersonateTokenSource(sourceTokenSource oauth2.TokenSource, serviceAccount string, delegateChain ...string) TokenSource {
 	return &impersonateTokenSource{
