@@ -58,7 +58,7 @@ func main() {
 	// id token option
 	var audience = flag.String("audience", "", "Audience")
 
-	var subject = flag.String("subject", "", "Subject")
+	var subject = flag.String("subject", "", "Overwrite subject for domain-wide delegation(EXPERIMENTAL)")
 
 	// access token option
 	var rawScopes stringsType

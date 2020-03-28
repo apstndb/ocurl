@@ -13,7 +13,9 @@ type keyFileTokenSource struct {
 	cfg     *jwt.Config
 }
 
-func KeyFileTokenSourceFromFile(keyFile string, subject string) (*keyFileTokenSource, error) {
+var _ interface{HasAccessToken; HasIDToken; HasEmail; HasJWTToken} = &keyFileTokenSource{}
+
+func KeyFileTokenSourceFromFile(keyFile string, subject string) (interface{HasAccessToken; HasIDToken; HasEmail; HasJWTToken}, error) {
 	buf, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err

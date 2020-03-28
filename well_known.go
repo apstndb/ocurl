@@ -11,13 +11,13 @@ type wellKnownTokenSource struct {
 	wellKnownJSON []byte
 }
 
-func WellKnownTokenSource() (TokenSource, error) {
+func WellKnownTokenSource() (HasAccessToken, error) {
 	filename := wellKnownFile()
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return &wellKnownTokenSource{b}, nil
+	return &wellKnownTokenSource{wellKnownJSON: b}, nil
 }
 
 func (wkts *wellKnownTokenSource) AccessToken(ctx context.Context, scopes ...string) (string, error) {
