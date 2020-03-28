@@ -1,3 +1,8 @@
+# ocurl
+
+Yet another `curl` wrapper with Google auth.
+
+It is my hobby project and not for production use.
 
 ```sh
 $ go get -u github.com/apstndb/ocurl 
@@ -39,3 +44,8 @@ $ ocurl -well-known -access-token -- https://cloudresourcemanager.googleapis.com
 # Use `gcloud auth login` credential
 $ ocurl -gcloud -access-token -- https://cloudresourcemanager.googleapis.com/v1/projects 
 ```
+
+## See also
+
+* https://github.com/google/oauth2l
+* https://github.com/b4b4r07/iap_curl
